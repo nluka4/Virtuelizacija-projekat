@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Virtuelizacija projekat")]
+[assembly: AssemblyTitle("Common")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("HP Inc.")]
-[assembly: AssemblyProduct("Virtuelizacija projekat")]
+[assembly: AssemblyProduct("Common")]
 [assembly: AssemblyCopyright("Copyright © HP Inc. 2026")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("4d9b8478-b14a-4828-a4ed-f28957b41f40")]
+[assembly: Guid("35f1fd9a-428e-4824-bdcc-8dafa460816d")]
 
 // Version information for an assembly consists of the following four values:
 //
