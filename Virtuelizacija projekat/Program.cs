@@ -10,6 +10,7 @@ namespace Virtuelizacija_projekat
     {
         static void Main(string[] args)
         {
+            Console.WriteLine("Hello World!");
         }
     }
 }
