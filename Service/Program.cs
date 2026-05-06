@@ -11,7 +11,17 @@ namespace Service
     {
         static void Main(string[] args)
         {
-            ServiceHost host = new ServiceHost(typeof(SmartGridService));
+            using (ServiceHost host = new ServiceHost(typeof(SmartGridService)))
+            {
+                host.Open();
+
+                Console.WriteLine("SmartGrid servis je pokrenut.");
+                Console.WriteLine("Adresa: net.tcp://localhost:4000/SmartGrid");
+                Console.WriteLine("Pritisni ENTER za zaustavljanje servisa...");
+                Console.ReadLine();
+
+                host.Close();
+            }
         }
     }
 }
