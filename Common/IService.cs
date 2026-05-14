@@ -14,7 +14,7 @@ namespace Common
         void PushSample(Sample sample);
 
         [OperationContract]
-        void StartSession(Sample meta);
+        void StartSession(SessionMeta meta);
         
         [OperationContract]
         void EndSession();

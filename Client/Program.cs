@@ -25,19 +25,30 @@ namespace Client
             //Create proxy from channel factory
             IService proxy = factory.CreateChannel();
 
+
+            //data 
+            string path = "C:\\FAKS\\3 GODINA\\virtuelizacija\\projekat\\Client\\smart_grid_dataset.csv";
+            string[] niz = path.Split('\\');
+            string fajl = niz[niz.Length - 1];
+
+            string[] format= { "Timestamp", "Power Usage (kW)", "Frequency (Hz)", "FFT_1", "FFT_2", "FFT_3", "FFT_4" };
+            //Starting session 
+            SessionMeta sessionData = new SessionMeta(fajl,format, DateTime.Now, "IN_PROGRESS");
+
+            proxy.StartSession(sessionData);
             //Reading data 
-            using(var streamReader = new StreamReader("C:\\FAKS\\3 GODINA\\virtuelizacija\\projekat\\Client\\smart_grid_dataset.csv"))
+            using (var streamReader = new StreamReader(path))
             {
                 using (var csvReader = new CsvReader(streamReader, CultureInfo.InvariantCulture))
                 {
                     var records = csvReader.GetRecords<Sample>().ToList();
                     foreach(var record in records)
                     {
-                        Console.WriteLine(record);
+                        Console.WriteLine(record.Power);
                     }
                 }
             }
-            Console.WriteLine("Ovaj mene malo jebe");
+            //Console.WriteLine("Ovaj mi malo gura dildo. svidja mi se :)");
             Console.ReadLine();
         }
 

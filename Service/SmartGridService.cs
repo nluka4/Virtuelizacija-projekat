@@ -9,9 +9,17 @@ namespace Service
 {
     public class SmartGridService : IService
     {
-        public void StartSession(Sample meta)
+        public void StartSession(SessionMeta meta)
         {
-            Console.WriteLine("Sesija je pokrenuta.");
+            Console.WriteLine("Ime fajla: "+meta.FileName);
+            Console.WriteLine("Vreme " + meta.TimeStamp);
+            Console.Write("Format: ");
+            foreach(string var in meta.Format)
+            {
+                Console.Write($"{var},");
+            }
+            Console.WriteLine();
+            Console.WriteLine("Status: " + meta.Status);
         }
 
         public void PushSample(Sample sample)
