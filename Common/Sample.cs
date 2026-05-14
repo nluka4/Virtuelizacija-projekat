@@ -10,74 +10,74 @@ namespace Common
     [DataContract]
     public class Sample
     {
-        private DateTime _TimeStamp;
-        private double _Power;
-        private double _Frequency;
-        private double _FFT1;
-        private double _FFT2;
-        private double _FFT3;
-        private double _FFT4;
+        private DateTime timeStamp;
+        private double power;
+        private double frequency;
+        private double fft1;
+        private double fft2;
+        private double fft3;
+        private double fft4;
 
         public Sample(DateTime timeStamp, double power, double frequency, double fft1, double fft2, double fft3, double fft4)
         {
-            _TimeStamp = timeStamp;
-            _Power = power;
-            _Frequency = frequency;
-            _FFT1 = fft1;
-            _FFT2 = fft2;
-            _FFT3 = fft3;
-            _FFT4 = fft4;
+            this.timeStamp = timeStamp;
+            this.power = power;
+            this.frequency= frequency;
+            this.fft1= fft1;
+            this.fft2 = fft2;
+            this.fft3 = fft3;
+            this.fft4 = fft4;
         }
 
         [DataMember]
        public DateTime TimeStamp
         {
-            get { return _TimeStamp; }
-            set { _TimeStamp = value; }
+            get { return timeStamp; }
+            set { timeStamp = value; }
         }
 
         
         [DataMember]
         public double Power
         {
-            get { return _Power; }
-            set { _Power = value; }
+            get { return power; }
+            set { power = value; }
         }
         
         [DataMember]
         public double Frequency
         {
-            get { return _Frequency; }
-            set { _Frequency = value; }
+            get { return frequency; }
+            set { frequency = value; }
         }
         
        
         [DataMember]
         public double FFT1
         {
-            get { return _FFT1; }
-            set { _FFT1 = value; }
+            get { return fft1; }
+            set { fft1 = value; }
         }
         
         [DataMember]
         public double FFT2
         {
-            get { return _FFT2; }
-            set { _FFT2 = value; }
+            get { return fft2; }
+            set { fft2 = value; }
         }
 
         [DataMember]
         public double FFT3
         {
-            get { return _FFT3; }
-            set { _FFT3 = value; }
+            get { return fft3; }
+            set { fft3 = value; }
         }
 
         [DataMember]
         public double FFT4
         {
-            get { return _FFT4; }
-            set { _FFT4 = value; }
+            get { return fft4; }
+            set { fft4 = value; }
         }
     }
 }
