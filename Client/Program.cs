@@ -33,18 +33,21 @@ namespace Client
 
             string[] format= { "Timestamp", "Power Usage (kW)", "Frequency (Hz)", "FFT_1", "FFT_2", "FFT_3", "FFT_4" };
             //Starting session 
-            SessionMeta sessionData = new SessionMeta(fajl,format, DateTime.Now, "IN_PROGRESS");
+            SessionMeta sessionData = new SessionMeta(fajl,format, DateTime.Now);
 
-            proxy.StartSession(sessionData);
+            Response res = proxy.StartSession(sessionData);
+
+            Console.WriteLine("====> " + res.SessionId);
             //Reading data 
             using (var streamReader = new StreamReader(path))
             {
                 using (var csvReader = new CsvReader(streamReader, CultureInfo.InvariantCulture))
                 {
-                    var records = csvReader.GetRecords<Sample>().ToList();
+                    var records = csvReader.GetRecords<Sample>().Take(117).ToList();
                     foreach(var record in records)
                     {
-                        Console.WriteLine(record.Power);
+                        Response res2 = proxy.PushSample(record);
+                        Console.WriteLine("Code: "+res2.Code);
                     }
                 }
             }

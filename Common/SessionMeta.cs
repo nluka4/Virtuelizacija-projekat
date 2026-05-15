@@ -10,12 +10,11 @@ namespace Common
         {
         }
 
-        public SessionMeta(string fileName, string[] format, DateTime timeStamp, string status)
+        public SessionMeta(string fileName, string[] format, DateTime timeStamp)
         {
             FileName = fileName;
             Format = format;
             TimeStamp = timeStamp;
-            Status = status;
         }
 
         [DataMember]
@@ -27,7 +26,5 @@ namespace Common
         [DataMember]
         public DateTime TimeStamp { get; set; }
 
-        [DataMember]
-        public string Status { get; set; }
     }
 }

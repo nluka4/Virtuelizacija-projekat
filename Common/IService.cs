@@ -11,11 +11,11 @@ namespace Common
     public interface IService
     {
         [OperationContract]
-        void PushSample(Sample sample);
-
-        [OperationContract]
-        void StartSession(SessionMeta meta);
+        Response StartSession(SessionMeta meta);
         
+        [OperationContract]
+        Response PushSample(Sample sample);
+
         [OperationContract]
         void EndSession();
     }
