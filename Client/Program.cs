@@ -51,6 +51,7 @@ namespace Client
                     }
                 }
             }
+            proxy.EndSession();
             //Console.WriteLine("Ovaj mi malo gura dildo. svidja mi se :)");
             Console.ReadLine();
         }

@@ -7,16 +7,16 @@ using System.Threading.Tasks;
 
 namespace Common
 {
-    [ServiceContract]
+    [ServiceContract(SessionMode = SessionMode.Required)]
     public interface IService
     {
         [OperationContract]
         Response StartSession(SessionMeta meta);
-        
+
         [OperationContract]
         Response PushSample(Sample sample);
 
         [OperationContract]
-        void EndSession();
+        Response EndSession();
     }
 }
