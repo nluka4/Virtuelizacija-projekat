@@ -43,7 +43,7 @@ namespace Client
             {
                 using (var csvReader = new CsvReader(streamReader, CultureInfo.InvariantCulture))
                 {
-                    var records = csvReader.GetRecords<Sample>().Take(117).ToList();
+                    var records = csvReader.GetRecords<Sample>().ToList();
                     foreach(var record in records)
                     {
                         Response res2 = proxy.PushSample(record);
@@ -52,7 +52,6 @@ namespace Client
                 }
             }
             proxy.EndSession();
-            //Console.WriteLine("Ovaj mi malo gura dildo. svidja mi se :)");
             Console.ReadLine();
         }
 

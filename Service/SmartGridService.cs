@@ -5,7 +5,7 @@ using System.Globalization;
 using System.ServiceModel;
 using Common;
 using CsvHelper;
-
+using System.Configuration;
 namespace Service
 {
     [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession)]
@@ -18,6 +18,26 @@ namespace Service
         private string measurementsPath;
         private string rejectsPath;
 
+        [Obsolete]
+        private double fThreshold = Double.Parse(ConfigurationSettings.AppSettings["F_threshold"]);
+
+        [Obsolete]
+        private double fftThreshold = Double.Parse(ConfigurationSettings.AppSettings["FFT_threshold"]);
+        
+        [Obsolete] 
+        private double averageDeviationPercent = Double.Parse(ConfigurationSettings.AppSettings["AverageDeviationPercent"]);
+
+        [Obsolete] 
+        private string serverDataPath = ConfigurationSettings.AppSettings["ServerDataPath"];
+
+        private double Ftotal = 0;
+        private double Fmean = 0;
+        private double Fcount = 0;
+
+
+        Sample previousSample = null;
+        Sample currentSample = null;
+
         public Response StartSession(SessionMeta meta)
         {
             if (meta == null)
@@ -25,13 +45,16 @@ namespace Service
                 return new Response(false, "NACK", "FAILED", "", "Session metadata is missing.");
             }
 
-            if (meta.Format == null || meta.Format.Length == 0)
+            string[] expectedFormat = {"Timestamp", "Power Usage (kW)", "Frequency (Hz)", "FFT_1", "FFT_2", "FFT_3", "FFT_4"};
+            if (meta.Format == null || meta.Format.Length == 0 || !meta.Format.SequenceEqual(expectedFormat))
             {
-                return new Response(false, "NACK", "FAILED", "", "Session format is missing.");
+                return new Response(false, "NACK", "FAILED", "", "Session format is invalid.");
             }
+
 
             sessionID = GenerateSessionId();
 
+            //AppDomain.CurrentDomain.BaseDirectory vraca ti putanju gde ti se nalazi application domain, to ti je folder iz kog se izvrsava aplikacija
             string baseFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "serverData");
             sessionFolderPath = Path.Combine(baseFolderPath, sessionID);
 
@@ -100,8 +123,50 @@ namespace Service
 
             WriteValidSample(sample);
 
-            Console.WriteLine($"Sample received: Frequency={sample.Frequency}, Power={sample.Power}");
+            //Console.WriteLine($"Sample received: Frequency={sample.Frequency}, Power={sample.Power}");
 
+
+
+            Ftotal += sample.Frequency;
+            Fcount++;
+
+            Fmean = Ftotal / Fcount;
+
+            double lower_boundary = 0.75 * Fmean;
+            double upper_boundary = 1.25 * Fmean;
+
+            if(sample.Frequency < lower_boundary)
+            {
+                Console.WriteLine("Out of boundary, below the expected value.");
+            }
+            else if(sample.Frequency > upper_boundary)
+            {
+                Console.WriteLine("Out of boundary,above the expected value.");
+            }
+
+            double deltaF =0, deltaFFT =0; 
+
+            if(previousSample == null)
+            {
+                previousSample = sample;
+            }
+
+            if(previousSample != null)
+            {
+                deltaF = sample.Frequency - previousSample.Frequency;
+                double FFTn = (sample.FFT1 + sample.FFT2 + sample.FFT3 + sample.FFT4) / 4;
+                double FFTn_1 = (previousSample.FFT1 + previousSample.FFT2 + previousSample.FFT3 + previousSample.FFT4) / 4;
+
+                deltaFFT = FFTn - FFTn_1;
+            }
+
+            if(deltaFFT > fftThreshold)
+            {
+                Console.WriteLine("Dogadjaj FFTSPIKE");
+            }
+            
+
+            Console.WriteLine("Prosecna frekvencija je: " +  Fmean);
             return new Response(
                 true,
                 "ACK",
