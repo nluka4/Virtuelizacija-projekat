@@ -6,6 +6,8 @@ using System.ServiceModel;
 using Common;
 using CsvHelper;
 using System.Configuration;
+using Microsoft.Diagnostics.Tracing.Parsers;
+using Microsoft.Diagnostics.Tracing.TraceUtilities.FilterQueryExpression;
 namespace Service
 {
     [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession)]
@@ -17,6 +19,7 @@ namespace Service
         private string sessionFolderPath;
         private string measurementsPath;
         private string rejectsPath;
+        private string logDocPath;
 
         [Obsolete]
         private double fThreshold = Double.Parse(ConfigurationSettings.AppSettings["F_threshold"]);
@@ -54,12 +57,15 @@ namespace Service
 
             sessionID = GenerateSessionId();
 
+
+
             //AppDomain.CurrentDomain.BaseDirectory vraca ti putanju gde ti se nalazi application domain, to ti je folder iz kog se izvrsava aplikacija
             string baseFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "serverData");
             sessionFolderPath = Path.Combine(baseFolderPath, sessionID);
 
             measurementsPath = Path.Combine(sessionFolderPath, "measurement_session.csv");
             rejectsPath = Path.Combine(sessionFolderPath, "rejects.csv");
+            logDocPath = Path.Combine(sessionFolderPath, "log.txt");
 
             Directory.CreateDirectory(sessionFolderPath);
 
@@ -68,19 +74,18 @@ namespace Service
 
             sessionStarted = true;
 
-            Console.WriteLine("Session started.");
-            Console.WriteLine("Session ID: " + sessionID);
-            Console.WriteLine("File name: " + meta.FileName);
-            Console.WriteLine("Time: " + meta.TimeStamp);
-            Console.WriteLine("Status: transfer in progress...");
-            Console.Write("Format: ");
 
-            foreach (string column in meta.Format)
-            {
-                Console.Write($"{column},");
-            }
+            //OnTransferStarted
+            Receiver receiver = new Receiver();
 
-            Console.WriteLine();
+            string onTransferStartedConsole = "Transfer started";
+            string onTransferStartedLog = $"[{DateTime.Now.ToString()}] Transfer started. SessionId = {sessionID}, FileName={meta.FileName}, Format={meta.Format.ToString()}";
+
+            string []messages = {onTransferStartedConsole, onTransferStartedLog};
+
+            receiver.onMessageReceived += SessionLog;
+
+            receiver.Receive(messages,logDocPath);
 
             return new Response(
                 true,
@@ -89,6 +94,7 @@ namespace Service
                 sessionID,
                 "Session started successfully. The server is ready to receive samples."
             );
+
         }
 
         public Response PushSample(Sample sample)
@@ -125,7 +131,15 @@ namespace Service
 
             //Console.WriteLine($"Sample received: Frequency={sample.Frequency}, Power={sample.Power}");
 
+            Receiver receiver = new Receiver();
+            string onSampleReceivedConsole = "Sample Received"; 
+            string onSampleReceivedLog = $"[{DateTime.Now.ToString()}] Sample received. SessionId ={sessionID}, Frequency={String.Format("{0:0.00}", sample.Frequency)}, Power={String.Format("{0:0.00}", sample.Power)}, FFT1={String.Format("{0:0.00}", sample.FFT1)}, FFT2={String.Format("{0:0.00}", sample.FFT2)}, FFT3={String.Format("{0:0.00}", sample.FFT3)}, FFT4={String.Format("{0:0.00}", sample.FFT4)}";
 
+            //OnSampleReceived
+            receiver.onMessageReceived += SessionLog;
+
+            string[] messages = { onSampleReceivedConsole, onSampleReceivedLog };
+            receiver.Receive(messages,logDocPath);
 
             Ftotal += sample.Frequency;
             Fcount++;
@@ -137,11 +151,39 @@ namespace Service
 
             if(sample.Frequency < lower_boundary)
             {
-                Console.WriteLine("Out of boundary, below the expected value.");
+                string onWarningRaisedConsole = "Warning: OutOfBandWarning detected.";
+
+                string onWarningRaisedLog =
+                    $"[{DateTime.Now}] WARNING OutOfBandWarning. " +
+                    $"SessionId={sessionID}, " +
+                    $"CurrentFrequency={sample.Frequency}, " +
+                    $"RunningMean={Fmean}, " +
+                    $"LowerBoundary={lower_boundary}, " +
+                    $"UpperBoundary={upper_boundary}, " +
+                    $"DeviationPercent={averageDeviationPercent}, " +
+                    $"Direction= below the expected value";
+
+                messages[0] = onWarningRaisedConsole;
+                messages[1] = onSampleReceivedLog;
+                receiver.Receive(messages, logDocPath);
             }
             else if(sample.Frequency > upper_boundary)
             {
-                Console.WriteLine("Out of boundary,above the expected value.");
+                string onWarningRaisedConsole = "Warning: OutOfBandWarning detected.";
+
+                string onWarningRaisedLog =
+                    $"[{DateTime.Now}] WARNING OutOfBandWarning. " +
+                    $"SessionId={sessionID}, " +
+                    $"CurrentFrequency={sample.Frequency}, " +
+                    $"RunningMean={Fmean}, " +
+                    $"LowerBoundary={lower_boundary}, " +
+                    $"UpperBoundary={upper_boundary}, " +
+                    $"DeviationPercent={averageDeviationPercent}, " +
+                    $"Direction= above the expected value";
+
+                messages[0] = onWarningRaisedConsole;
+                messages[1] = onSampleReceivedLog;
+                receiver.Receive(messages, logDocPath);
             }
 
             double deltaF =0, deltaFFT =0; 
@@ -151,22 +193,32 @@ namespace Service
                 previousSample = sample;
             }
 
-            if(previousSample != null)
+            double FFTn = 0;
+            double FFTn_1 = 0;
+            if (previousSample != null)
             {
                 deltaF = sample.Frequency - previousSample.Frequency;
-                double FFTn = (sample.FFT1 + sample.FFT2 + sample.FFT3 + sample.FFT4) / 4;
-                double FFTn_1 = (previousSample.FFT1 + previousSample.FFT2 + previousSample.FFT3 + previousSample.FFT4) / 4;
+                FFTn = (sample.FFT1 + sample.FFT2 + sample.FFT3 + sample.FFT4) / 4;
+                FFTn_1 = (previousSample.FFT1 + previousSample.FFT2 + previousSample.FFT3 + previousSample.FFT4) / 4;
 
                 deltaFFT = FFTn - FFTn_1;
+
+                previousSample = sample;
             }
 
+            if(deltaF > fThreshold)
+            {
+                RaiseWarning("FrequencySpike","Warning: Frequency spike detected",sample.Frequency,previousSample.Frequency,deltaF,fThreshold,"Frequency","deltaF","fThreshold",receiver,logDocPath);
+            }
+           
             if(deltaFFT > fftThreshold)
             {
-                Console.WriteLine("Dogadjaj FFTSPIKE");
+                RaiseWarning("FFTSpike","Warning: Fast Fourier Transform (FFT) spike detected",FFTn,FFTn_1,deltaFFT,fftThreshold,"FFT","deltaFFT","fftThreshold",receiver,logDocPath);
             }
+        
             
 
-            Console.WriteLine("Prosecna frekvencija je: " +  Fmean);
+            //Console.WriteLine("Prosecna frekvencija je: " +  Fmean);
             return new Response(
                 true,
                 "ACK",
@@ -175,6 +227,63 @@ namespace Service
                 "Sample received and written successfully."
             );
         }
+
+
+        private void RaiseWarning(
+    string warningType,
+    string consoleMessage,
+    double currentValue,
+    double previousValue,
+    double delta,
+    double threshold,
+    string valueName,
+    string deltaName,
+    string thresholdName,
+    Receiver receiver,
+    string logDocPath)
+        {
+            string direction = delta > 0 ? "above expected value" : "below expected value";
+
+            string warningConsole = consoleMessage;
+
+            string warningLog =
+                $"[{DateTime.Now}] WARNING {warningType}. " +
+                $"SessionId={sessionID}, " +
+                $"Current {valueName}={currentValue}, " +
+                $"Previous {valueName}={previousValue}, " +
+                $"{deltaName}={delta}, " +
+                $"{thresholdName}={threshold}, " +
+                $"Direction={direction}";
+
+            string[] messages = { warningConsole, warningLog };
+
+            receiver.Receive(messages, logDocPath);
+        }
+
+
+
+
+
+        public void SessionLog(string[] message, string path)
+        {
+            Console.WriteLine(message[0]);
+
+            using(StreamWriter writer = new StreamWriter(path, append: true))
+            {
+                writer.WriteLine(message[1]);
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
 
         public Response EndSession()
         {
@@ -191,10 +300,16 @@ namespace Service
 
             sessionStarted = false;
 
-            Console.WriteLine("Transfer completed.");
-            Console.WriteLine("Session completed.");
-            Console.WriteLine("Session ID: " + sessionID);
+            Receiver receiver = new Receiver();
 
+            string OnTransferCompletedConsole = "Transfer terminated";
+            string OnTransferCompletedLog = $"[{DateTime.Now.ToString()}] Transfer terminated. SessionId = {sessionID}";
+
+            string[] messages = { OnTransferCompletedConsole, OnTransferCompletedLog };
+
+            receiver.onMessageReceived += SessionLog;
+
+            receiver.Receive(messages, logDocPath);
             return new Response(
                 true,
                 "ACK",
@@ -283,6 +398,7 @@ namespace Service
             }
         }
 
+  
         private void WriteValidSample(Sample sample)
         {
             using (var writer = new StreamWriter(measurementsPath, true))

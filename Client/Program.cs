@@ -43,7 +43,7 @@ namespace Client
             {
                 using (var csvReader = new CsvReader(streamReader, CultureInfo.InvariantCulture))
                 {
-                    var records = csvReader.GetRecords<Sample>().ToList();
+                    var records = csvReader.GetRecords<Sample>().Take(117).ToList();
                     foreach(var record in records)
                     {
                         Response res2 = proxy.PushSample(record);
