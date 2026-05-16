@@ -146,10 +146,10 @@ namespace Service
 
             Fmean = Ftotal / Fcount;
 
-            double lower_boundary = 0.75 * Fmean;
-            double upper_boundary = 1.25 * Fmean;
+            double lower_boundary = Fmean * (1 - averageDeviationPercent / 100);
+            double upper_boundary = Fmean * (1 + averageDeviationPercent / 100);
 
-            if(sample.Frequency < lower_boundary)
+            if (sample.Frequency < lower_boundary)
             {
                 string onWarningRaisedConsole = "Warning: OutOfBandWarning detected.";
 
@@ -164,7 +164,7 @@ namespace Service
                     $"Direction= below the expected value";
 
                 messages[0] = onWarningRaisedConsole;
-                messages[1] = onSampleReceivedLog;
+                messages[1] = onWarningRaisedLog;
                 receiver.Receive(messages, logDocPath);
             }
             else if(sample.Frequency > upper_boundary)
@@ -203,20 +203,20 @@ namespace Service
 
                 deltaFFT = FFTn - FFTn_1;
 
-                previousSample = sample;
             }
 
-            if(deltaF > fThreshold)
+            if(Math.Abs(deltaF) > fThreshold)
             {
                 RaiseWarning("FrequencySpike","Warning: Frequency spike detected",sample.Frequency,previousSample.Frequency,deltaF,fThreshold,"Frequency","deltaF","fThreshold",receiver,logDocPath);
             }
            
-            if(deltaFFT > fftThreshold)
+            if(Math.Abs(deltaFFT)> fftThreshold)
             {
                 RaiseWarning("FFTSpike","Warning: Fast Fourier Transform (FFT) spike detected",FFTn,FFTn_1,deltaFFT,fftThreshold,"FFT","deltaFFT","fftThreshold",receiver,logDocPath);
             }
-        
-            
+
+
+            previousSample = sample;
 
             //Console.WriteLine("Prosecna frekvencija je: " +  Fmean);
             return new Response(
