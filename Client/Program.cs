@@ -32,16 +32,75 @@ namespace Client
             string fajl = niz[niz.Length - 1];
 
             string[] format= { "Timestamp", "Power Usage (kW)", "Frequency (Hz)", "FFT_1", "FFT_2", "FFT_3", "FFT_4" };
+            string clientRejectsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "client_rejects.log");
+
             //Starting session 
             SessionMeta sessionData = new SessionMeta(fajl,format, DateTime.Now);
 
-            Response res = proxy.StartSession(sessionData);
+            Response startResponse;
 
-            
+            try
+            {
+                startResponse = proxy.StartSession(sessionData);
+
+                Console.WriteLine("----------------------------------------");
+                Console.WriteLine("[CLIENT <- SERVICE] StartSession response");
+                Console.WriteLine("ACK: " + startResponse.Ack);
+                Console.WriteLine("Code: " + startResponse.Code);
+                Console.WriteLine("Status: " + startResponse.Status);
+                Console.WriteLine("SessionId: " + startResponse.SessionId);
+                Console.WriteLine("Message: " + startResponse.Message);
+                Console.WriteLine("----------------------------------------");
+            }
+            catch (FaultException<ValidationFault> ex)
+            {
+                string message =
+                    "START SESSION VALIDATION FAULT | " +
+                    "Field=" + ex.Detail.FieldName +
+                    " | Value=" + ex.Detail.InvalidValue +
+                    " | Message=" + ex.Detail.Message;
+
+                Console.WriteLine(message);
+                AppendClientLog(clientRejectsPath, message);
+
+                return;
+            }
+            catch (FaultException<DataFormatFault> ex)
+            {
+                string message =
+                    "START SESSION DATA FORMAT FAULT | " +
+                    "Message=" + ex.Detail.Message +
+                    " | Expected=" + ex.Detail.ExpectedFormat +
+                    " | Received=" + ex.Detail.ReceivedFormat;
+
+                Console.WriteLine(message);
+                AppendClientLog(clientRejectsPath, message);
+
+                return;
+            }
+            catch (CommunicationException ex)
+            {
+                string message = "START SESSION COMMUNICATION ERROR | " + ex.Message;
+
+                Console.WriteLine(message);
+                AppendClientLog(clientRejectsPath, message);
+
+                return;
+            }
+            catch (TimeoutException ex)
+            {
+                string message = "START SESSION TIMEOUT ERROR | " + ex.Message;
+
+                Console.WriteLine(message);
+                AppendClientLog(clientRejectsPath, message);
+
+                return;
+            }
+
+
             //Reading data 
             Console.WriteLine(path);
 
-            string clientRejectsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "client_rejects.log");
 
             File.WriteAllText(
                 clientRejectsPath,
@@ -150,9 +209,56 @@ namespace Client
             Console.WriteLine($"Rejected/invalid rows: {rejectedRows}");
             Console.WriteLine($"Skipped extra rows: {skippedRows}");
             Console.WriteLine($"Client rejects log: {clientRejectsPath}");
-            Console.WriteLine("====> " + res.SessionId);
             Console.WriteLine("----------------------------------------");
-            proxy.EndSession();
+            try
+            {
+                Response endResponse = proxy.EndSession();
+
+                Console.WriteLine("----------------------------------------");
+                Console.WriteLine("[CLIENT <- SERVICE] EndSession response");
+                Console.WriteLine("ACK: " + endResponse.Ack);
+                Console.WriteLine("Code: " + endResponse.Code);
+                Console.WriteLine("Status: " + endResponse.Status);
+                Console.WriteLine("SessionId: " + endResponse.SessionId);
+                Console.WriteLine("Message: " + endResponse.Message);
+                Console.WriteLine("----------------------------------------");
+            }
+            catch (FaultException<ValidationFault> ex)
+            {
+                string message =
+                    "END SESSION VALIDATION FAULT | " +
+                    "Field=" + ex.Detail.FieldName +
+                    " | Value=" + ex.Detail.InvalidValue +
+                    " | Message=" + ex.Detail.Message;
+
+                Console.WriteLine(message);
+                AppendClientLog(clientRejectsPath, message);
+            }
+            catch (FaultException<DataFormatFault> ex)
+            {
+                string message =
+                    "END SESSION DATA FORMAT FAULT | " +
+                    "Message=" + ex.Detail.Message +
+                    " | Expected=" + ex.Detail.ExpectedFormat +
+                    " | Received=" + ex.Detail.ReceivedFormat;
+
+                Console.WriteLine(message);
+                AppendClientLog(clientRejectsPath, message);
+            }
+            catch (CommunicationException ex)
+            {
+                string message = "END SESSION COMMUNICATION ERROR | " + ex.Message;
+
+                Console.WriteLine(message);
+                AppendClientLog(clientRejectsPath, message);
+            }
+            catch (TimeoutException ex)
+            {
+                string message = "END SESSION TIMEOUT ERROR | " + ex.Message;
+
+                Console.WriteLine(message);
+                AppendClientLog(clientRejectsPath, message);
+            }
             Console.ReadLine();
         }
 

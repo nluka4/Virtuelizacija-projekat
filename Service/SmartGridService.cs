@@ -161,50 +161,55 @@ namespace Service
             string[] messages = { onSampleReceivedConsole, onSampleReceivedLog };
             receiver.Receive(messages,logDocPath);
 
+            if (Fcount > 0)
+            {
+                Fmean = Ftotal / Fcount;
+
+                double lower_boundary = Fmean * (1 - averageDeviationPercent / 100);
+                double upper_boundary = Fmean * (1 + averageDeviationPercent / 100);
+
+                if (sample.Frequency < lower_boundary)
+                {
+                    string onWarningRaisedConsole = "Warning: OutOfBandWarning detected.";
+
+                    string onWarningRaisedLog =
+                        $"[{DateTime.Now}] WARNING OutOfBandWarning. " +
+                        $"SessionId={sessionID}, " +
+                        $"CurrentFrequency={sample.Frequency}, " +
+                        $"RunningMean={Fmean}, " +
+                        $"LowerBoundary={lower_boundary}, " +
+                        $"UpperBoundary={upper_boundary}, " +
+                        $"DeviationPercent={averageDeviationPercent}, " +
+                        $"Direction= below the expected value";
+
+                    messages[0] = onWarningRaisedConsole;
+                    messages[1] = onWarningRaisedLog;
+                    receiver.Receive(messages, logDocPath);
+                }
+                else if (sample.Frequency > upper_boundary)
+                {
+                    string onWarningRaisedConsole = "Warning: OutOfBandWarning detected.";
+
+                    string onWarningRaisedLog =
+                        $"[{DateTime.Now}] WARNING OutOfBandWarning. " +
+                        $"SessionId={sessionID}, " +
+                        $"CurrentFrequency={sample.Frequency}, " +
+                        $"RunningMean={Fmean}, " +
+                        $"LowerBoundary={lower_boundary}, " +
+                        $"UpperBoundary={upper_boundary}, " +
+                        $"DeviationPercent={averageDeviationPercent}, " +
+                        $"Direction= above the expected value";
+
+                    messages[0] = onWarningRaisedConsole;
+                    messages[1] = onWarningRaisedLog;
+                    receiver.Receive(messages, logDocPath);
+                }
+            }
+
             Ftotal += sample.Frequency;
             Fcount++;
 
-            Fmean = Ftotal / Fcount;
-
-            double lower_boundary = Fmean * (1 - averageDeviationPercent / 100);
-            double upper_boundary = Fmean * (1 + averageDeviationPercent / 100);
-
-            if (sample.Frequency < lower_boundary)
-            {
-                string onWarningRaisedConsole = "Warning: OutOfBandWarning detected.";
-
-                string onWarningRaisedLog =
-                    $"[{DateTime.Now}] WARNING OutOfBandWarning. " +
-                    $"SessionId={sessionID}, " +
-                    $"CurrentFrequency={sample.Frequency}, " +
-                    $"RunningMean={Fmean}, " +
-                    $"LowerBoundary={lower_boundary}, " +
-                    $"UpperBoundary={upper_boundary}, " +
-                    $"DeviationPercent={averageDeviationPercent}, " +
-                    $"Direction= below the expected value";
-
-                messages[0] = onWarningRaisedConsole;
-                messages[1] = onWarningRaisedLog;
-                receiver.Receive(messages, logDocPath);
-            }
-            else if(sample.Frequency > upper_boundary)
-            {
-                string onWarningRaisedConsole = "Warning: OutOfBandWarning detected.";
-
-                string onWarningRaisedLog =
-                    $"[{DateTime.Now}] WARNING OutOfBandWarning. " +
-                    $"SessionId={sessionID}, " +
-                    $"CurrentFrequency={sample.Frequency}, " +
-                    $"RunningMean={Fmean}, " +
-                    $"LowerBoundary={lower_boundary}, " +
-                    $"UpperBoundary={upper_boundary}, " +
-                    $"DeviationPercent={averageDeviationPercent}, " +
-                    $"Direction= above the expected value";
-
-                messages[0] = onWarningRaisedConsole;
-                messages[1] = onWarningRaisedLog;
-                receiver.Receive(messages, logDocPath);
-            }
+           
 
             double deltaF =0, deltaFFT =0; 
 
