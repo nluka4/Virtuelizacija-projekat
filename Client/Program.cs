@@ -27,7 +27,7 @@ namespace Client
 
 
             //data 
-            string path = "C:\\FAKS\\3 GODINA\\virtuelizacija\\projekat\\Client\\smart_grid_dataset.csv";
+            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, System.Configuration.ConfigurationManager.AppSettings["DatasetPath"]);
             string[] niz = path.Split('\\');
             string fajl = niz[niz.Length - 1];
 
@@ -39,6 +39,7 @@ namespace Client
 
             Console.WriteLine("====> " + res.SessionId);
             //Reading data 
+            Console.WriteLine(path);
             using (var streamReader = new StreamReader(path))
             {
                 using (var csvReader = new CsvReader(streamReader, CultureInfo.InvariantCulture))

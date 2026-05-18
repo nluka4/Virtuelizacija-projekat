@@ -6,8 +6,6 @@ using System.ServiceModel;
 using Common;
 using CsvHelper;
 using System.Configuration;
-using Microsoft.Diagnostics.Tracing.Parsers;
-using Microsoft.Diagnostics.Tracing.TraceUtilities.FilterQueryExpression;
 namespace Service
 {
     [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession)]
@@ -60,10 +58,10 @@ namespace Service
 
 
             //AppDomain.CurrentDomain.BaseDirectory vraca ti putanju gde ti se nalazi application domain, to ti je folder iz kog se izvrsava aplikacija
-            string baseFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "serverData");
+            string baseFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, serverDataPath);
             sessionFolderPath = Path.Combine(baseFolderPath, sessionID);
 
-            measurementsPath = Path.Combine(sessionFolderPath, "measurement_session.csv");
+            measurementsPath = Path.Combine(sessionFolderPath, "measurements_session.csv");
             rejectsPath = Path.Combine(sessionFolderPath, "rejects.csv");
             logDocPath = Path.Combine(sessionFolderPath, "log.txt");
 
@@ -182,7 +180,7 @@ namespace Service
                     $"Direction= above the expected value";
 
                 messages[0] = onWarningRaisedConsole;
-                messages[1] = onSampleReceivedLog;
+                messages[1] = onWarningRaisedLog;
                 receiver.Receive(messages, logDocPath);
             }
 
