@@ -9,7 +9,7 @@ using System.Configuration;
 namespace Service
 {
     [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession)]
-    public class SmartGridService : IService
+    public class SmartGridService : IService, IDisposable
     {
         private string sessionID;
         private bool sessionStarted = false;
@@ -18,6 +18,8 @@ namespace Service
         private string measurementsPath;
         private string rejectsPath;
         private string logDocPath;
+
+        private SessionFileWriter sessionWriter;
 
         [Obsolete]
         private double fThreshold = Double.Parse(ConfigurationSettings.AppSettings["F_threshold"]);
@@ -87,16 +89,17 @@ namespace Service
             string baseFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, serverDataPath);
             sessionFolderPath = Path.Combine(baseFolderPath, sessionID);
 
-            measurementsPath = Path.Combine(sessionFolderPath, "measurements_session.csv");
-            rejectsPath = Path.Combine(sessionFolderPath, "rejects.csv");
-            logDocPath = Path.Combine(sessionFolderPath, "log.txt");
+            DisposeSessionWriterSafely();
 
-            Directory.CreateDirectory(sessionFolderPath);
+            sessionWriter = new SessionFileWriter(sessionFolderPath, meta.Format);
 
-            WriteHeader(measurementsPath, meta.Format, includeRejectReason: false);
-            WriteHeader(rejectsPath, meta.Format, includeRejectReason: true);
+            measurementsPath = sessionWriter.MeasurementsPath;
+            rejectsPath = sessionWriter.RejectsPath;
+            logDocPath = sessionWriter.LogPath;
 
             sessionStarted = true;
+
+            Console.WriteLine("[DISPOSE] SessionFileWriter created and streams are opened.");
 
 
             //OnTransferStarted
@@ -136,7 +139,6 @@ namespace Service
 
             if (validationError != null)
             {
-                WriteRejectedSample(sample, validationError);
 
                 Console.WriteLine("Rejected sample: " + validationError);
 
@@ -147,7 +149,6 @@ namespace Service
                 );
             }
 
-            WriteValidSample(sample);
 
             //Console.WriteLine($"Sample received: Frequency={sample.Frequency}, Power={sample.Power}");
 
@@ -293,9 +294,9 @@ namespace Service
         {
             Console.WriteLine(message[0]);
 
-            using(StreamWriter writer = new StreamWriter(path, append: true))
+            if (sessionWriter != null)
             {
-                writer.WriteLine(message[1]);
+                sessionWriter.WriteLog(message[1]);
             }
         }
 
@@ -331,8 +332,12 @@ namespace Service
             string[] messages = { OnTransferCompletedConsole, OnTransferCompletedLog };
 
             receiver.onMessageReceived += SessionLog;
-
             receiver.Receive(messages, logDocPath);
+
+            sessionStarted = false;
+
+            DisposeSessionWriterSafely();
+
             return new Response(
                 true,
                 "ACK",
@@ -401,72 +406,7 @@ namespace Service
         {
             return !double.IsNaN(value) && !double.IsInfinity(value);
         }
-
-        private void WriteHeader(string path, string[] format, bool includeRejectReason)
-        {
-            using (var writer = new StreamWriter(path, false))
-            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
-            {
-                foreach (var column in format)
-                {
-                    csv.WriteField(column);
-                }
-
-                if (includeRejectReason)
-                {
-                    csv.WriteField("RejectReason");
-                }
-
-                csv.NextRecord();
-            }
-        }
-
-  
-        private void WriteValidSample(Sample sample)
-        {
-            using (var writer = new StreamWriter(measurementsPath, true))
-            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
-            {
-                WriteSampleFields(csv, sample);
-                csv.NextRecord();
-            }
-        }
-
-        private void WriteRejectedSample(Sample sample, string reason)
-        {
-            using (var writer = new StreamWriter(rejectsPath, true))
-            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
-            {
-                if (sample != null)
-                {
-                    WriteSampleFields(csv, sample);
-                }
-                else
-                {
-                    csv.WriteField("");
-                    csv.WriteField("");
-                    csv.WriteField("");
-                    csv.WriteField("");
-                    csv.WriteField("");
-                    csv.WriteField("");
-                    csv.WriteField("");
-                }
-
-                csv.WriteField(reason);
-                csv.NextRecord();
-            }
-        }
-
-        private void WriteSampleFields(CsvWriter csv, Sample sample)
-        {
-            csv.WriteField(sample.TimeStamp);
-            csv.WriteField(sample.Power);
-            csv.WriteField(sample.Frequency);
-            csv.WriteField(sample.FFT1);
-            csv.WriteField(sample.FFT2);
-            csv.WriteField(sample.FFT3);
-            csv.WriteField(sample.FFT4);
-        }
+        
 
         private string GenerateSessionId()
         {
@@ -494,6 +434,24 @@ namespace Service
                 new DataFormatFault(message, expectedFormat, receivedFormat),
                 new FaultReason(message)
             );
+        }
+
+        private void DisposeSessionWriterSafely()
+        {
+            if (sessionWriter != null)
+            {
+                Console.WriteLine("[DISPOSE] Closing session file writers and streams.");
+
+                sessionWriter.Dispose();
+                sessionWriter = null;
+
+                Console.WriteLine("[DISPOSE] Session resources closed successfully.");
+            }
+        }
+
+        public void Dispose()
+        {
+            DisposeSessionWriterSafely();
         }
     }
 }
