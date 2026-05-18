@@ -139,14 +139,23 @@ namespace Service
 
             if (validationError != null)
             {
-
                 Console.WriteLine("Rejected sample: " + validationError);
+
+                if (sessionWriter != null)
+                {
+                    sessionWriter.WriteRejectedSample(sample, validationError);
+                }
 
                 ThrowValidationFault(
                     validationError,
                     "Sample",
                     "invalid sample data"
                 );
+            }
+
+            if (sessionWriter != null)
+            {
+                sessionWriter.WriteValidSample(sample);
             }
 
 

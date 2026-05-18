@@ -46,13 +46,41 @@ namespace Service
             measurementsCsv = new CsvWriter(measurementsWriter, CultureInfo.InvariantCulture);
             rejectsCsv = new CsvWriter(rejectsWriter, CultureInfo.InvariantCulture);
 
+            WriteHeader(measurementsCsv, format, false);
+            WriteHeader(rejectsCsv, format, true);
 
             WriteLog("[DISPOSE INIT] SessionFileWriter opened measurements, rejects and log streams.");
         }
 
-        
+        public void WriteValidSample(Sample sample)
+        {
+            ThrowIfDisposed();
 
-        
+            WriteSampleFields(measurementsCsv, sample);
+            measurementsCsv.NextRecord();
+            measurementsWriter.Flush();
+        }
+
+        public void WriteRejectedSample(Sample sample, string reason)
+        {
+            ThrowIfDisposed();
+
+            if (sample != null)
+            {
+                WriteSampleFields(rejectsCsv, sample);
+            }
+            else
+            {
+                for (int i = 0; i < 7; i++)
+                {
+                    rejectsCsv.WriteField(string.Empty);
+                }
+            }
+
+            rejectsCsv.WriteField(reason);
+            rejectsCsv.NextRecord();
+            rejectsWriter.Flush();
+        }
 
         public void WriteLog(string message)
         {
@@ -62,10 +90,31 @@ namespace Service
             logWriter.Flush();
         }
 
-       
-        
+        private void WriteHeader(CsvWriter csv, string[] format, bool includeRejectReason)
+        {
+            foreach (string column in format)
+            {
+                csv.WriteField(column);
+            }
 
-       
+            if (includeRejectReason)
+            {
+                csv.WriteField("RejectReason");
+            }
+
+            csv.NextRecord();
+        }
+
+        private void WriteSampleFields(CsvWriter csv, Sample sample)
+        {
+            csv.WriteField(sample.TimeStamp);
+            csv.WriteField(sample.Power);
+            csv.WriteField(sample.Frequency);
+            csv.WriteField(sample.FFT1);
+            csv.WriteField(sample.FFT2);
+            csv.WriteField(sample.FFT3);
+            csv.WriteField(sample.FFT4);
+        }
 
         private void ThrowIfDisposed()
         {
