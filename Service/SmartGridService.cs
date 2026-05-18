@@ -43,15 +43,41 @@ namespace Service
         {
             if (meta == null)
             {
-                return new Response(false, "NACK", "FAILED", "", "Session metadata is missing.");
+                ThrowValidationFault(
+                    "Session metadata is missing.",
+                    "SessionMeta",
+                    "null"
+                );
             }
 
-            string[] expectedFormat = {"Timestamp", "Power Usage (kW)", "Frequency (Hz)", "FFT_1", "FFT_2", "FFT_3", "FFT_4"};
-            if (meta.Format == null || meta.Format.Length == 0 || !meta.Format.SequenceEqual(expectedFormat))
+            string[] expectedFormat =
+{
+    "Timestamp",
+    "Power Usage (kW)",
+    "Frequency (Hz)",
+    "FFT_1",
+    "FFT_2",
+    "FFT_3",
+    "FFT_4"
+};
+
+            if (meta.Format == null || meta.Format.Length == 0)
             {
-                return new Response(false, "NACK", "FAILED", "", "Session format is invalid.");
+                ThrowDataFormatFault(
+                    "Session format is missing.",
+                    string.Join(", ", expectedFormat),
+                    "null/empty"
+                );
             }
 
+            if (!meta.Format.SequenceEqual(expectedFormat))
+            {
+                ThrowDataFormatFault(
+                    "Session format is invalid.",
+                    string.Join(", ", expectedFormat),
+                    string.Join(", ", meta.Format)
+                );
+            }
 
             sessionID = GenerateSessionId();
 
@@ -99,12 +125,10 @@ namespace Service
         {
             if (!sessionStarted)
             {
-                return new Response(
-                    false,
-                    "NACK",
-                    "FAILED",
-                    sessionID,
-                    "Session has not been started. Call StartSession before sending samples."
+                ThrowValidationFault(
+                    "Session has not been started. Call StartSession before sending samples.",
+                    "Session",
+                    "not started"
                 );
             }
 
@@ -116,12 +140,10 @@ namespace Service
 
                 Console.WriteLine("Rejected sample: " + validationError);
 
-                return new Response(
-                    false,
-                    "NACK",
-                    "IN_PROGRESS",
-                    sessionID,
-                    validationError
+                ThrowValidationFault(
+                    validationError,
+                    "Sample",
+                    "invalid sample data"
                 );
             }
 
@@ -287,12 +309,10 @@ namespace Service
         {
             if (!sessionStarted)
             {
-                return new Response(
-                    false,
-                    "NACK",
-                    "FAILED",
-                    sessionID,
-                    "Session cannot be completed because it was not started."
+                ThrowValidationFault(
+                    "Session cannot be completed because it was not started.",
+                    "Session",
+                    "not started"
                 );
             }
 
@@ -452,6 +472,22 @@ namespace Service
                 Enumerable.Repeat(allChars, 8)
                     .Select(chars => chars[random.Next(chars.Length)])
                     .ToArray()
+            );
+        }
+
+        private void ThrowValidationFault(string message, string fieldName, string invalidValue)
+        {
+            throw new FaultException<ValidationFault>(
+                new ValidationFault(message, fieldName, invalidValue),
+                new FaultReason(message)
+            );
+        }
+
+        private void ThrowDataFormatFault(string message, string expectedFormat, string receivedFormat)
+        {
+            throw new FaultException<DataFormatFault>(
+                new DataFormatFault(message, expectedFormat, receivedFormat),
+                new FaultReason(message)
             );
         }
     }

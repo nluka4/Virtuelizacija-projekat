@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.ServiceModel;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ServiceModel;
 
 namespace Common
 {
@@ -11,12 +6,17 @@ namespace Common
     public interface IService
     {
         [OperationContract]
+        [FaultContract(typeof(ValidationFault))]
+        [FaultContract(typeof(DataFormatFault))]
         Response StartSession(SessionMeta meta);
 
         [OperationContract]
+        [FaultContract(typeof(ValidationFault))]
+        [FaultContract(typeof(DataFormatFault))]
         Response PushSample(Sample sample);
 
         [OperationContract]
+        [FaultContract(typeof(ValidationFault))]
         Response EndSession();
     }
 }

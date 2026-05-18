@@ -102,7 +102,6 @@ namespace Client
                         Console.WriteLine(
                             $"Row {rowNumber} sent | Code={res2.Code} | Status={res2.Status} | Message={res2.Message}");
 
-                        // Ako server vrati NACK, i to logujemo kao odbijen red
                         if (res2.Code == "NACK" || res2.Ack == false)
                         {
                             rejectedRows++;
@@ -112,6 +111,26 @@ namespace Client
 
                             AppendClientLog(clientRejectsPath, serverRejectMessage);
                         }
+                    }
+                    catch (FaultException<ValidationFault> ex)
+                    {
+                        rejectedRows++;
+
+                        string message =
+                            $"VALIDATION FAULT | Row={rowNumber} | Field={ex.Detail.FieldName} | Value={ex.Detail.InvalidValue} | Message={ex.Detail.Message} | Data={rawRow}";
+
+                        Console.WriteLine(message);
+                        AppendClientLog(clientRejectsPath, message);
+                    }
+                    catch (FaultException<DataFormatFault> ex)
+                    {
+                        rejectedRows++;
+
+                        string message =
+                            $"DATA FORMAT FAULT | Row={rowNumber} | Message={ex.Detail.Message} | Expected={ex.Detail.ExpectedFormat} | Received={ex.Detail.ReceivedFormat} | Data={rawRow}";
+
+                        Console.WriteLine(message);
+                        AppendClientLog(clientRejectsPath, message);
                     }
                     catch (Exception ex)
                     {
