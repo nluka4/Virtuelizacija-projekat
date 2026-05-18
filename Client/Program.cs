@@ -37,23 +37,112 @@ namespace Client
 
             Response res = proxy.StartSession(sessionData);
 
-            Console.WriteLine("====> " + res.SessionId);
+            
             //Reading data 
             Console.WriteLine(path);
+
+            string clientRejectsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "client_rejects.log");
+
+            File.WriteAllText(
+                clientRejectsPath,
+                $"Client rejects log started: {DateTime.Now}{Environment.NewLine}"
+            );
+
+            int rowNumber = 0;
+            int sentRows = 0;
+            int rejectedRows = 0;
+            int skippedRows = 0;
+
             using (var streamReader = new StreamReader(path))
+            using (var csvReader = new CsvReader(streamReader, CultureInfo.InvariantCulture))
             {
-                using (var csvReader = new CsvReader(streamReader, CultureInfo.InvariantCulture))
+                csvReader.Read();
+                csvReader.ReadHeader();
+
+                while (csvReader.Read())
                 {
-                    var records = csvReader.GetRecords<Sample>().Take(117).ToList();
-                    foreach(var record in records)
+                    rowNumber++;
+
+                    string rawRow = "";
+
+                    try
                     {
+                        if (csvReader.Parser != null && csvReader.Parser.Record != null)
+                        {
+                            rawRow = string.Join(",", csvReader.Parser.Record);
+                        }
+                    }
+                    catch
+                    {
+                        rawRow = "Raw row could not be read.";
+                    }
+
+                    // Sve preko 117 ne šaljemo serveru, nego logujemo u client_rejects.log
+                    if (rowNumber > 117)
+                    {
+                        skippedRows++;
+
+                        string skippedMessage =
+                            $"SKIPPED EXTRA ROW | Row={rowNumber} | Reason=Only first 117 rows are sent | Data={rawRow}";
+
+                        Console.WriteLine(skippedMessage);
+                        AppendClientLog(clientRejectsPath, skippedMessage);
+
+                        continue;
+                    }
+
+                    try
+                    {
+                        Sample record = csvReader.GetRecord<Sample>();
+
                         Response res2 = proxy.PushSample(record);
-                        Console.WriteLine("Code: "+res2.Code);
+
+                        sentRows++;
+
+                        Console.WriteLine(
+                            $"Row {rowNumber} sent | Code={res2.Code} | Status={res2.Status} | Message={res2.Message}");
+
+                        // Ako server vrati NACK, i to logujemo kao odbijen red
+                        if (res2.Code == "NACK" || res2.Ack == false)
+                        {
+                            rejectedRows++;
+
+                            string serverRejectMessage =
+                                $"SERVER REJECTED ROW | Row={rowNumber} | Code={res2.Code} | Status={res2.Status} | Message={res2.Message} | Data={rawRow}";
+
+                            AppendClientLog(clientRejectsPath, serverRejectMessage);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        rejectedRows++;
+
+                        string invalidMessage =
+                            $"INVALID OR INCOMPLETE CSV ROW | Row={rowNumber} | Error={ex.Message} | Data={rawRow}";
+
+                        Console.WriteLine(invalidMessage);
+                        AppendClientLog(clientRejectsPath, invalidMessage);
                     }
                 }
             }
+
+            Console.WriteLine("----------------------------------------");
+            Console.WriteLine($"Sent rows: {sentRows}");
+            Console.WriteLine($"Rejected/invalid rows: {rejectedRows}");
+            Console.WriteLine($"Skipped extra rows: {skippedRows}");
+            Console.WriteLine($"Client rejects log: {clientRejectsPath}");
+            Console.WriteLine("====> " + res.SessionId);
+            Console.WriteLine("----------------------------------------");
             proxy.EndSession();
             Console.ReadLine();
+        }
+
+        private static void AppendClientLog(string path, string message)
+        {
+            File.AppendAllText(
+                path,
+                $"[{DateTime.Now}] {message}{Environment.NewLine}"
+            );
         }
 
     }
